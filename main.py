@@ -46,10 +46,7 @@ path = []
 # and generate a scalar score for how good it is, compared to `target`
 def calc_score(prospective):
     score = 0
-    for y in range(target.shape[0]):
-        for x in range(target.shape[1]):
-            # tenative, dumb algorithm
-            score += (target[y][x] - prospective[y][x])**2
+    score = np.square(target - prospective).sum()
     return score
     
 
