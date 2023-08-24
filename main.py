@@ -5,7 +5,11 @@ import time
 import pillow_load
 import mathy
 
-IN_PYCHARM = True
+IN_PYCHARM = False
+
+# 4ish gb ram with 150 nails at 300x300 pixel inputs, but scales quadratically!!!!!
+# global I_HAVE_MANY_GB_OF_RAM_IM_OK_WITH_USING_TO_MAKE_PROGRAM_GO_FASTER
+I_HAVE_MANY_GB_OF_RAM_IM_OK_WITH_USING_TO_MAKE_PROGRAM_GO_FASTER = True
 
 if IN_PYCHARM:
     from line_profiler_pycharm import profile
@@ -40,7 +44,7 @@ currently dumb and slow, to improve. Measures how far apart the images are
 target = pillow_load.get_normalized_img_2d_arr('bumble128.png')
 
 R = target.shape[0]/2
-NAILS = 149
+NAILS = 180
 STRING_COUNT = 1800
 LINE_DARKNESS = 0.06
 THETA_STEP = 2*math.pi / NAILS
@@ -48,6 +52,25 @@ THETA_STEP = 2*math.pi / NAILS
 COORDS = {n: (R+R*math.cos(n*THETA_STEP), R+R*math.sin(n*THETA_STEP)) for n in range(NAILS)}
 path = []
 
+
+def pregen_if_applicable():
+    global I_HAVE_MANY_GB_OF_RAM_IM_OK_WITH_USING_TO_MAKE_PROGRAM_GO_FASTER
+    if I_HAVE_MANY_GB_OF_RAM_IM_OK_WITH_USING_TO_MAKE_PROGRAM_GO_FASTER:
+        chord_count = (NAILS * (NAILS-1)) / 2
+        # chords * pixel/array size for each (width x width) * 4 bytes/px * convert to gb
+        estimated_gb_ram = chord_count * (R*2)**2 * 4 / 1024 / 1024 / 1024
+        print(f"Pregenning chords. Estimated ram usage: {estimated_gb_ram:.2f}GB")
+        if estimated_gb_ram > 6:
+            response = input("Are you really sure you are ok with this? To continue with the pregeneration, press y; any other key will revert to the other method. > ")
+            if response != 'y' and response != 'Y':
+                I_HAVE_MANY_GB_OF_RAM_IM_OK_WITH_USING_TO_MAKE_PROGRAM_GO_FASTER = False
+                return                
+        start_time = time.monotonic()
+        mathy.pregen_chords(NAILS, COORDS, R, LINE_DARKNESS)
+        print(f"Pregeneration of chords took {time.monotonic() - start_time:.3f} seconds")
+
+
+    
 # compare a prospective array state (from some candidate string path)
 # and generate a scalar score for how good it is, compared to `target`
 def calc_score(prospective):
@@ -55,13 +78,18 @@ def calc_score(prospective):
     score = np.square(target - prospective).sum()
     return score
     
-@profile
+# @profile
 def main():
     print('running!')
-    import PIL.Image
-    import PIL.ImageDraw
-    canvas = PIL.Image.new(mode="F", size=(int(R * 2), int(R * 2)), color=255)
-    drawable = PIL.ImageDraw.Draw(canvas)
+    pregen_if_applicable()
+
+    if not I_HAVE_MANY_GB_OF_RAM_IM_OK_WITH_USING_TO_MAKE_PROGRAM_GO_FASTER:
+        import PIL.Image
+        import PIL.ImageDraw
+        canvas = PIL.Image.new(mode="F", size=(int(R * 2), int(R * 2)), color=255)
+        drawable = PIL.ImageDraw.Draw(canvas)
+    else:
+        canvas, drawable = None, None
 
     # Meet jimmy. jimmy is how our solution is looking so far. Every time
     # we find a chord we determine is best, we add its result into jimmy,
@@ -81,7 +109,10 @@ def main():
                 pass
             else:
                 # mutate the overlay array
-                overlay = mathy.add_darkness_from_line(*COORDS[start_nail], *COORDS[end_nail], canvas, drawable, overlay, LINE_DARKNESS)
+                if I_HAVE_MANY_GB_OF_RAM_IM_OK_WITH_USING_TO_MAKE_PROGRAM_GO_FASTER:
+                    overlay = mathy.add_darkness_from_line_pregen(start_nail, end_nail)
+                else:
+                    overlay = mathy.add_darkness_from_line(*COORDS[start_nail], *COORDS[end_nail], canvas, drawable, overlay, LINE_DARKNESS)
                 #print(overlay)
                 #print(jimmy)
                 #print('\n\n')
@@ -93,9 +124,12 @@ def main():
         #print(jimmy)
         #orig = jimmy.copy()
         #overlay.fill(0)
-        overlay = mathy.add_darkness_from_line(*COORDS[start_nail], *COORDS[best_scoring_nail], canvas, drawable, overlay, LINE_DARKNESS)
-        jimmy = jimmy*(1-
-                       overlay)
+        
+        if I_HAVE_MANY_GB_OF_RAM_IM_OK_WITH_USING_TO_MAKE_PROGRAM_GO_FASTER:
+            overlay = mathy.add_darkness_from_line_pregen(start_nail, best_scoring_nail)
+        else:
+            overlay = mathy.add_darkness_from_line(*COORDS[start_nail], *COORDS[best_scoring_nail], canvas, drawable, overlay, LINE_DARKNESS)
+        jimmy = jimmy*(1-overlay)
         #print(jimmy)
         #print(jimmy == orig)
         path.append(best_scoring_nail)
@@ -110,10 +144,10 @@ def main():
     print('\n jimmy=')
     print(jimmy)
     cairo_visualize.visualize_path(path, COORDS, target.shape[0], fname='cairo-low-res')
-    pillow_load.convert_2d_to_img(jimmy) # invert so black is where we drew and white is where we didn't
+    pillow_load.convert_2d_to_img(jimmy) 
     cairo_visualize.visualize_path(path, COORDS, 1600, fname='cairo-high-res')
 
 if __name__ == '__main__':
     start_time = time.monotonic()
     main()
-    print("Execution took " + str(time.monotonic() - start_time) + " seconds")
+    print(f"Execution took {time.monotonic() - start_time:.3f} seconds")
