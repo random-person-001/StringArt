@@ -1,11 +1,17 @@
 import numpy as np
 import math
+import time
 
 import pillow_load
 import mathy
-# import cairo_visualize
 
-from line_profiler_pycharm import profile
+IN_PYCHARM = True
+
+if IN_PYCHARM:
+    from line_profiler_pycharm import profile
+else:
+    import cairo_visualize
+
 
 ''' Procedure:
 load bw 1000px wide image (potentially crop outside circle but I don't think
@@ -31,12 +37,12 @@ currently dumb and slow, to improve. Measures how far apart the images are
 #  cairo: top left
 # so when viewing intermediate data, invert the y! (y=resolution-y)
 
-target = pillow_load.get_normalized_img_2d_arr('test4.png')
+target = pillow_load.get_normalized_img_2d_arr('bumble128.png')
 
 R = target.shape[0]/2
-NAILS = 99
-STRING_COUNT = 600
-LINE_DARKNESS = 0.1
+NAILS = 149
+STRING_COUNT = 1800
+LINE_DARKNESS = 0.06
 THETA_STEP = 2*math.pi / NAILS
 
 COORDS = {n: (R+R*math.cos(n*THETA_STEP), R+R*math.sin(n*THETA_STEP)) for n in range(NAILS)}
@@ -49,9 +55,14 @@ def calc_score(prospective):
     score = np.square(target - prospective).sum()
     return score
     
-
+@profile
 def main():
     print('running!')
+    import PIL.Image
+    import PIL.ImageDraw
+    canvas = PIL.Image.new(mode="F", size=(int(R * 2), int(R * 2)), color=255)
+    drawable = PIL.ImageDraw.Draw(canvas)
+
     # Meet jimmy. jimmy is how our solution is looking so far. Every time
     # we find a chord we determine is best, we add its result into jimmy,
     # and then move along testing the next potential chord candidates
@@ -70,8 +81,10 @@ def main():
                 pass
             else:
                 # mutate the overlay array
-                mathy.add_darkness_from_line(*COORDS[start_nail], *COORDS[end_nail], overlay, LINE_DARKNESS)
-                # print(overlay)
+                overlay = mathy.add_darkness_from_line(*COORDS[start_nail], *COORDS[end_nail], canvas, drawable, overlay, LINE_DARKNESS)
+                #print(overlay)
+                #print(jimmy)
+                #print('\n\n')
                 score = calc_score((jimmy)*(1-overlay))
                 if score < best_score_this_round:
                     best_score_this_round = score
@@ -80,8 +93,9 @@ def main():
         #print(jimmy)
         #orig = jimmy.copy()
         #overlay.fill(0)
-        mathy.add_darkness_from_line(*COORDS[start_nail], *COORDS[best_scoring_nail], overlay, LINE_DARKNESS)
-        jimmy = jimmy*(1-overlay)
+        overlay = mathy.add_darkness_from_line(*COORDS[start_nail], *COORDS[best_scoring_nail], canvas, drawable, overlay, LINE_DARKNESS)
+        jimmy = jimmy*(1-
+                       overlay)
         #print(jimmy)
         #print(jimmy == orig)
         path.append(best_scoring_nail)
@@ -100,4 +114,6 @@ def main():
     cairo_visualize.visualize_path(path, COORDS, 1600, fname='cairo-high-res')
 
 if __name__ == '__main__':
+    start_time = time.monotonic()
     main()
+    print("Execution took " + str(time.monotonic() - start_time) + " seconds")
