@@ -42,12 +42,17 @@ def pregen_chords(nails, coords, r, line_darkness):
                 drawable.line(
                     (coords[start_nail], coords[end_nail]), fill=fill, width=width
                 )
+                if start_nail == 3 and end_nail == 100:
+                    canvas.show()
+                if start_nail == 30 and end_nail == 150:
+                    canvas.show()
                 output_arr = np.asarray(canvas)
                 pregenned_chords[(start_nail, end_nail)] = output_arr * (
                     line_darkness / 255
                 )
 
 
+#  @profile
 def add_darkness_from_line_pregen(start_nail, end_nail):
     """
     This is the version that draws upon the pregenerated dictionary.
@@ -62,7 +67,7 @@ def add_darkness_from_line_pregen(start_nail, end_nail):
     return pregenned_chords[(start_nail, end_nail)]
 
 
-# @profile
+#  @profile
 def add_darkness_from_line(
     nail_1_x, nail_1_y, nail_2_x, nail_2_y, canvas, drawable, output_arr, darkness
 ):
@@ -93,3 +98,14 @@ def add_darkness_from_line(
     output_arr = np.asarray(canvas)
     # print(output_arr)
     return output_arr * (darkness / 255)
+
+
+def get_total_string_length(path, coords):
+    # returns in terms of Pixels
+    last_nail = 0
+    l = 0
+    for nail in path:
+        l += ((coords[nail][0] - coords[last_nail][0])**2 +
+              (coords[nail][1] - coords[last_nail][1])**2) ** 0.5
+        last_nail = nail
+    return l

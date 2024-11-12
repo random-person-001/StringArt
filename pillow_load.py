@@ -12,6 +12,8 @@ where 0 was where there was black
 
 
 def get_normalized_img_2d_arr(fpath="test.png"):
+    if not fpath.startswith('img/'):
+        fpath = 'img/' + fpath
     with Image.open(fpath) as im:
         # perhaps look into Imgmath at some point?
         # change png into 32 bit unsigned float for each pixel
@@ -67,6 +69,14 @@ def convert_2d_to_img(a):
     end = a * 255
     with Image.fromarray(end) as im:
         im.show()
+        return im
+
+def save_from_array(a, fname):
+    end = a * 255
+    with Image.fromarray(end) as im:
+        im = im.convert('RGB')
+        im.save(fname+'.png', 'PNG')
+
 
 
 """

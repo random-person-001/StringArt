@@ -8,11 +8,13 @@ import mathy
 
 """
 TWEAK ME!
+
+Using more nails than `pixel width of input image / 2` is generally superflous I think
 """
-NAILS = 180
-STRING_COUNT = 1800
-LINE_DARKNESS = 0.06
-TARGET_FILENAME = "bumble128.png"
+NAILS = 187
+STRING_COUNT = 4200
+LINE_DARKNESS = 0.03  # this is based on real world values, through trial and error
+TARGET_FILENAME = "rfe2-185.png"
 ENABLE_PROFILER = False
 
 # 4ish gb ram with 150 nails at 300x300 pixel inputs, but scales quadratically!!!!!
@@ -23,6 +25,9 @@ ENABLE_PROFILER = False
 I_HAVE_MANY_GB_OF_RAM_IM_OK_WITH_USING_TO_MAKE_PROGRAM_GO_FASTER = True
 """
 End of tweak me area
+3700 strings -> line darkness = 0.03
+
+
 """
 
 
@@ -88,7 +93,7 @@ def pregen_if_applicable():
         # chords * pixel/array size for each (width x width) * 4 bytes/px * convert to gb
         estimated_gb_ram = chord_count * (R * 2) ** 2 * 4 / 1024 / 1024 / 1024
         print(
-            f"Pregenning {chord_count} chords. Estimated ram usage: {estimated_gb_ram:.2f}GB"
+            f"Pregenning {int(chord_count)} chords. Estimated ram usage: {estimated_gb_ram:.2f}GB"
         )
         if estimated_gb_ram > 6:
             response = input(
@@ -109,11 +114,10 @@ def calc_score(prospective):
     :param prospective: numpy array to compare to the target image/array
     :return: a scalar indicating how far the prospective state is from our target. Lower is better.
     """
-    score = np.square(target - prospective).sum()
-    return score
+    return np.square(target - prospective).sum()
 
 
-# @profile
+#  @profile
 def main():
     print("running!")
     pregen_if_applicable()
@@ -136,7 +140,14 @@ def main():
     start_nail = 0
     path.append(start_nail)
 
+    loop_start_time = time.monotonic()
+
     for i in range(STRING_COUNT):
+        if i % 256 == 0:
+            print(f"Progress: {i/STRING_COUNT:2.0%}")
+            if i == 256*2:
+                elapsed_s = time.monotonic() - loop_start_time
+                print(f"Estimated time remaining: {STRING_COUNT/i * elapsed_s:2.0f} seconds")
         best_score_this_round = target.shape[0] ** 3  # an arbitrarily high number
         best_scoring_nail = 0
         for end_nail in range(NAILS):
@@ -181,18 +192,20 @@ def main():
         start_nail = best_scoring_nail
 
     print(path)
-    print("\n last overlay=")
-    print(overlay)
-    print("\n target=")
-    print(target)
-    print("\n jimmy=")
-    print(jimmy)
-    cairo_visualize.visualize_path(path, COORDS, target.shape[0], fname="cairo-low-res")
-    pillow_load.convert_2d_to_img(jimmy)
-    cairo_visualize.visualize_path(path, COORDS, 1600, fname="cairo-high-res")
+    
+    def fname(info1):
+        return f"img/{TARGET_FILENAME}-stringed-{NAILS}-nails-{STRING_COUNT}-strings-{LINE_DARKNESS}-darkness-{info1}"
+    pillow_load.save_from_array(jimmy, fname('jimmy'))  # what the algorithm thought it acheived
+    if not ENABLE_PROFILER:
+        cairo_visualize.visualize_path(path, COORDS, 1600, fname("string-detail"))  # high rez
 
 
 if __name__ == "__main__":
     start_time = time.monotonic()
     main()
     print(f"Execution took {time.monotonic() - start_time:.3f} seconds")
+    # del mathy.pregenned_chords
+    total_length = mathy.get_total_string_length(path, COORDS) / R  # now length is in terms of circle radii
+    feet_to_meters = 0.3048
+    # a 3000 yd cone/spool of Overlocker/Overlocking thread is on the order of $10 or less!
+    print(f"With a two-foot diameter circle, this would take {total_length/feet_to_meters:.0f} meters of string")
