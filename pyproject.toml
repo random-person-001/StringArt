@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "stringart"
+version = "0.1.0"
+description = ""
+authors = ["random-person-001 <rileylegos6@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+numpy = "^1.25.2"
+pillow = "^10.0.0"
+line-profiler-pycharm = "^1.1.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
